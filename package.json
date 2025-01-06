@@ -1,0 +1,26 @@
+{
+  "name": "gcp-billing-cli",
+  "version": "1.0.0",
+  "description": "CLI tool to manage GCP project billing",
+  "main": "dist/index.js",
+  "bin": {
+    "gcp-billing": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node --no-deprecation dist/index.js",
+    "dev": "ts-node --no-deprecation src/index.ts"
+  },
+  "dependencies": {
+    "@google-cloud/billing": "^4.0.0",
+    "@google-cloud/resource-manager": "^5.0.0",
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+} 
