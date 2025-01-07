@@ -77,7 +77,7 @@ gcloud functions deploy billing-manager \
   --service-account="${SA_EMAIL}"
 
 # Get the Cloud Function URL and set it as an environment variable
-export BILLING_FUNCTION_URL=$(gcloud functions describe billing-manager --region us-central1 --format='value(httpsTrigger.url)')
+export BILLING_FUNCTION_URL=$(gcloud functions describe billing-manager --region us-central1 --format='value(url)')
 ```
 
 ### 3. Install CLI Dependencies
