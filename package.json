@@ -1,7 +1,7 @@
 {
   "name": "gcp-billing-cli",
   "version": "1.0.0",
-  "description": "CLI tool to manage GCP project billing",
+  "description": "CLI tool to manage GCP project billing and scheduling",
   "main": "dist/index.js",
   "bin": {
     "gcp-billing": "./dist/index.js"
@@ -9,8 +9,25 @@
   "scripts": {
     "build": "tsc",
     "start": "node --no-deprecation dist/index.js",
-    "dev": "ts-node --no-deprecation src/index.ts"
+    "dev": "ts-node --no-deprecation src/index.ts",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepare": "npm run build",
+    "lint": "eslint src --ext .ts",
+    "test": "jest"
   },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "gcp",
+    "google-cloud",
+    "billing",
+    "cli",
+    "cloud-scheduler"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "@google-cloud/billing": "^4.0.0",
     "@google-cloud/resource-manager": "^5.0.0",
@@ -20,7 +37,14 @@
     "ora": "^5.4.1"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.1",
     "typescript": "^5.3.3",
     "ts-node": "^10.9.2"
   }

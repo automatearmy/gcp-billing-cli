@@ -1,15 +1,22 @@
 {
-  "name": "gcp-billing-manager",
+  "name": "gcp-billing-manager-function",
   "version": "1.0.0",
   "description": "Cloud Function to manage GCP project billing",
   "main": "index.js",
-  "engines": {
-    "node": "18"
-  },
   "scripts": {
-    "start": "node index.js"
+    "start": "functions-framework --target=manageBilling",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@google-cloud/billing": "^4.0.0"
+  },
+  "devDependencies": {
+    "@google-cloud/functions-framework": "^3.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0"
   }
 } 

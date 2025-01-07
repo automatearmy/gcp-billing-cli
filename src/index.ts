@@ -106,7 +106,7 @@ async function listBillingAccounts() {
       return;
     }
 
-    const accountInfos = billingAccounts.map(account => createRawObject({
+    const accountInfos: BillingAccountInfo[] = billingAccounts.map(account => createRawObject({
       'Account ID': account.name?.split('/').pop() || 'N/A',
       'Display Name': account.displayName || 'N/A',
       'Open': account.open ? CHECKMARK : CROSS
@@ -129,8 +129,7 @@ interface ListOptions {
 async function listProjects(options: ListOptions) {
   const spinner = ora('Fetching projects...').start();
   try {
-    const projects = await projectsClient.searchProjects();
-    const [projectsList] = await projects;
+    const [projectsList] = await projectsClient.searchProjects();
     
     if (!projectsList || projectsList.length === 0) {
       spinner.warn('No projects found. Make sure you have the necessary permissions.');
@@ -164,7 +163,7 @@ async function listProjects(options: ListOptions) {
     }
 
     spinner.text = 'Fetching billing information...';
-    const projectInfos = [];
+    const projectInfos: ProjectInfo[] = [];
     
     for (const project of filteredProjects) {
       try {

@@ -29,6 +29,8 @@ yarn-error.log*
 
 # Test coverage
 coverage/
+.nyc_output/
+junit.xml
 
 # Cloud Function local testing
 cloud-function/node_modules/
@@ -37,4 +39,15 @@ cloud-function/package-lock.json
 # Temporary files
 *.tmp
 *.temp
-.cache/ 
+.cache/
+
+# ESLint
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+.tscache/
+
+# Jest
+coverage/
+__snapshots__/ 
