@@ -3,12 +3,17 @@
 import { Command } from 'commander';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { CloudBillingClient } from '@google-cloud/billing';
+import { CloudSchedulerClient } from '@google-cloud/scheduler';
 import chalk from 'chalk';
 import ora from 'ora';
+import { readFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 
 const program = new Command();
 const projectsClient = new ProjectsClient();
 const billingClient = new CloudBillingClient();
+const schedulerClient = new CloudSchedulerClient();
 
 // Emoji constants to avoid quotes in table
 const CHECKMARK = '✅' as const;
@@ -25,6 +30,12 @@ interface BillingAccountInfo {
   'Account ID': string;
   'Display Name': string;
   'Open': typeof CHECKMARK | typeof CROSS;
+}
+
+interface ScheduleOptions {
+  time?: string;
+  cron?: string;
+  timezone?: string;
 }
 
 // Helper function to create raw string objects for table display
@@ -49,10 +60,12 @@ function handleApiError(error: any, spinner?: ora.Ora) {
     console.log(chalk.yellow('\nPlease enable the following APIs in your GCP project:'));
     console.log(chalk.yellow('1. Cloud Billing API: https://console.cloud.google.com/apis/library/cloudbilling.googleapis.com'));
     console.log(chalk.yellow('2. Cloud Resource Manager API: https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com'));
+    console.log(chalk.yellow('3. Cloud Scheduler API: https://console.cloud.google.com/apis/library/cloudscheduler.googleapis.com'));
     console.log(chalk.yellow('\nAfter enabling the APIs, wait a few minutes for the changes to propagate before trying again.'));
     console.log(chalk.blue('\nYou can also enable these APIs using the following gcloud commands:'));
     console.log('gcloud services enable cloudbilling.googleapis.com');
-    console.log('gcloud services enable cloudresourcemanager.googleapis.com\n');
+    console.log('gcloud services enable cloudresourcemanager.googleapis.com');
+    console.log('gcloud services enable cloudscheduler.googleapis.com\n');
     return;
   }
   
@@ -210,6 +223,94 @@ async function setBillingStatus(projectId: string, billingAccountId: string | nu
   }
 }
 
+// Add this function to get the current project ID from gcloud config
+function getCurrentProjectId(): string {
+  try {
+    const configPath = join(homedir(), '.config', 'gcloud', 'configurations', 'config_default');
+    const config = readFileSync(configPath, 'utf8');
+    const match = config.match(/project = (.+)/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    throw new Error('Project ID not found in gcloud config');
+  } catch (error) {
+    throw new Error('Failed to read project ID from gcloud config. Make sure you have run: gcloud config set project PROJECT_ID');
+  }
+}
+
+async function scheduleOperation(
+  targetProjectId: string,
+  billingAccountId: string | null,
+  enable: boolean,
+  options: ScheduleOptions,
+  functionUrl: string
+) {
+  const spinner = ora(`Scheduling billing ${enable ? 'enablement' : 'disablement'}...`).start();
+  
+  try {
+    // Get the current project ID from gcloud config
+    const currentProjectId = getCurrentProjectId();
+    spinner.text = `Using project ${currentProjectId} for Cloud Scheduler`;
+
+    const parent = `projects/${currentProjectId}/locations/us-central1`;
+    const jobName = `billing-${enable ? 'enable' : 'disable'}-${targetProjectId}-${Date.now()}`;
+    const fullJobName = `${parent}/jobs/${jobName}`;
+
+    let schedule: string;
+    if (options.cron) {
+      schedule = options.cron;
+    } else if (options.time) {
+      const [hours, minutes] = options.time.split(':');
+      schedule = `${minutes} ${hours} * * *`;
+    } else {
+      throw new Error('Either --time or --cron must be specified');
+    }
+
+    const job = {
+      name: fullJobName,
+      schedule,
+      timeZone: options.timezone || 'UTC',
+      httpTarget: {
+        uri: functionUrl,
+        httpMethod: 'POST' as const,
+        body: Buffer.from(JSON.stringify({
+          projectId: targetProjectId,
+          billingAccountId,
+          enable
+        })).toString('base64'),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    };
+
+    const response = (await schedulerClient.createJob({
+      parent,
+      job
+    }))[0];
+
+    spinner.succeed(`Successfully scheduled billing ${enable ? 'enablement' : 'disablement'}`);
+    console.log(chalk.green('\nSchedule details:'));
+    console.log(`Job name: ${response.name}`);
+    console.log(`Schedule: ${response.schedule}`);
+    console.log(`Timezone: ${response.timeZone}`);
+    console.log(`Scheduler project: ${currentProjectId}`);
+    console.log(`Target project: ${targetProjectId}`);
+    
+    // Get the next execution time
+    const [nextRun] = await schedulerClient.getJob({ name: response.name });
+    if (nextRun.scheduleTime) {
+      const nextRunTime = new Date(Number(nextRun.scheduleTime.seconds) * 1000);
+      console.log(`Next run: ${nextRunTime.toLocaleString()} ${options.timezone || 'UTC'}`);
+    } else {
+      console.log('Next run time not available yet. Check Cloud Console for details.');
+    }
+    console.log();
+  } catch (error) {
+    handleApiError(error, spinner);
+  }
+}
+
 program
   .name('gcp-billing')
   .description('CLI tool to manage GCP project billing')
@@ -250,5 +351,62 @@ program
   .description('Disable billing for a GCP project')
   .argument('<projectId>', 'The project ID to disable billing for')
   .action((projectId) => setBillingStatus(projectId, null, false));
+
+program
+  .command('schedule-enable')
+  .description('Schedule billing to be enabled at a specific time')
+  .argument('<projectId>', 'The project ID to enable billing for')
+  .argument('<billingAccountId>', 'The billing account ID to link to the project')
+  .option('--time <HH:MM>', 'Time in 24-hour format (HH:MM)')
+  .option('--cron <expression>', 'Cron expression (e.g. "0 9 * * 1" for every Monday at 9 AM)')
+  .option('--timezone <timezone>', 'Timezone (default: UTC)', 'UTC')
+  .addHelpText('after', `
+Examples:
+  $ gcp-billing schedule-enable my-project-id 0X0X0X-0X0X0X-0X0X0X --time 09:00
+  $ gcp-billing schedule-enable my-project-id 0X0X0X-0X0X0X-0X0X0X --cron "0 9 * * 1" --timezone America/Los_Angeles
+  
+Note: You need to set up a Cloud Function first and provide its URL via BILLING_FUNCTION_URL environment variable.`)
+  .action((projectId, billingAccountId, options) => {
+    if (!options.time && !options.cron) {
+      console.error(chalk.red('Error: Either --time or --cron must be specified'));
+      return;
+    }
+    const functionUrl = process.env.BILLING_FUNCTION_URL;
+    if (!functionUrl) {
+      console.error(chalk.red('Error: BILLING_FUNCTION_URL environment variable is not set'));
+      console.log(chalk.yellow('\nPlease set it to your Cloud Function URL:'));
+      console.log('export BILLING_FUNCTION_URL=https://your-function-url');
+      return;
+    }
+    scheduleOperation(projectId, billingAccountId, true, options, functionUrl);
+  });
+
+program
+  .command('schedule-disable')
+  .description('Schedule billing to be disabled at a specific time')
+  .argument('<projectId>', 'The project ID to disable billing for')
+  .option('--time <HH:MM>', 'Time in 24-hour format (HH:MM)')
+  .option('--cron <expression>', 'Cron expression (e.g. "0 18 * * 1-5" for weekdays at 6 PM)')
+  .option('--timezone <timezone>', 'Timezone (default: UTC)', 'UTC')
+  .addHelpText('after', `
+Examples:
+  $ gcp-billing schedule-disable my-project-id --time 18:00
+  $ gcp-billing schedule-disable my-project-id --cron "0 18 * * 1-5" --timezone America/New_York
+  
+Note: You need to set up a Cloud Function first and provide its URL via BILLING_FUNCTION_URL environment variable.`)
+  .action((projectId, options) => {
+    if (!options.time && !options.cron) {
+      console.error(chalk.red('Error: Either --time or --cron must be specified'));
+      return;
+    }
+    const functionUrl = process.env.BILLING_FUNCTION_URL;
+    if (!functionUrl) {
+      console.error(chalk.red('Error: BILLING_FUNCTION_URL environment variable is not set'));
+      console.log(chalk.yellow('\nPlease set it to your Cloud Function URL:'));
+      console.log('export BILLING_FUNCTION_URL=https://your-function-url');
+      return;
+    }
+    scheduleOperation(projectId, null, false, options, functionUrl);
+  });
 
 program.parse(); 
