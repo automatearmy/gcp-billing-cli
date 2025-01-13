@@ -6,7 +6,7 @@ A command-line tool to manage Google Cloud Platform (GCP) project billing.
 
 1. Node.js (v14 or higher)
 2. GCP account with appropriate permissions
-3. Google Cloud SDK installed and configured
+3. Google Cloud SDK installed and a project selected
 4. Authentication set up (run `gcloud auth application-default login`)
 5. Required GCP APIs enabled in your project:
    - Cloud Billing API
@@ -54,16 +54,16 @@ gcloud organizations add-iam-policy-binding $(gcloud organizations list --format
   --role="roles/billing.admin"
 
 # For project-level permissions:
-gcloud projects add-iam-policy-binding ${PROJECT_ID} \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/billing.admin"
+# gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+#   --member="serviceAccount:${SA_EMAIL}" \
+#   --role="roles/billing.admin"
 
 # For billing account permissions:
 gcloud beta billing accounts add-iam-policy-binding YOUR_BILLING_ACCOUNT_ID \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/billing.user"
 
-# Deploy the Cloud Function
+# Deploy the Cloud Function (anser y to any prompt for enabling APIs)
 gcloud functions deploy billing-manager \
   --runtime nodejs18 \
   --trigger-http \
@@ -95,6 +95,12 @@ npm run build
 ```bash
 npm link
 ```
+
+### 6. Add executable permissions
+You may need to add executable permissions to the build before using:
+```bash
+chmod +x dist/index.js
+``` 
 
 ## Usage
 
