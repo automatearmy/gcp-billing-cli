@@ -1,6 +1,14 @@
 # GCP Billing CLI
 
-A command-line tool to manage Google Cloud Platform (GCP) project billing.
+A command-line tool to manage Google Cloud Platform (GCP) project billing with advanced scheduling capabilities. This tool allows you to:
+
+- List and manage project billing status
+- Enable/disable billing for projects
+- Schedule billing operations using:
+  - Simple daily time-based scheduling
+  - Advanced cron-based scheduling for complex patterns
+  - Timezone-aware scheduling
+  - Flexible scheduling patterns (e.g., weekdays only, specific days of the month)
 
 ## Prerequisites
 
@@ -110,9 +118,9 @@ chmod +x dist/index.js
 gcp-billing list
 
 # Exclude projects starting with a prefix
-gcp-billing list -e ig-
+gcp-billing list -e prod-
 # or
-gcp-billing list --exclude ig-
+gcp-billing list --exclude prod-
 
 # Show only projects starting with a prefix
 gcp-billing list -f prod-

@@ -1,7 +1,7 @@
 {
   "name": "gcp-billing-cli",
   "version": "1.0.0",
-  "description": "CLI tool to manage GCP project billing and scheduling",
+  "description": "CLI tool to manage and schedule GCP project billing operations with support for cron-based automation",
   "main": "dist/index.js",
   "bin": {
     "gcp-billing": "./dist/index.js"

@@ -1,7 +1,7 @@
 {
   "name": "gcp-billing-manager-function",
   "version": "1.0.0",
-  "description": "Cloud Function to manage GCP project billing",
+  "description": "Cloud Function to handle scheduled and on-demand GCP project billing operations",
   "main": "index.js",
   "scripts": {
     "start": "functions-framework --target=manageBilling",
